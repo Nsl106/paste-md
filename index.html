@@ -125,6 +125,7 @@
           if (matches = /(?:^|\;)invert\=([01])(?:\;|$)/.exec(document.cookie)) {
               if (matches[1] === '1') {
                   document.body.classList.add("invert");
+                  setDarkmode(false)
               }
           }
 
@@ -198,22 +199,25 @@
           document.getElementById("nav").classList.remove("text-offer");
       }
 
+      function setDarkmode(isDark) {
+          let outputClasses = document.getElementById("output").classList;
+          let darkmodeButton = document.getElementById("darkmodebutton")
+          if (isDark) {
+              outputClasses.add("dark")
+              outputClasses.remove("light")
+              darkmodeButton.textContent = "[light mode]"
+          } else {
+              outputClasses.add("light")
+              outputClasses.remove("dark")
+              darkmodeButton.textContent = "[dark mode]"
+          }
+      }
+
       function invert() {
           var isLight = document.body.classList.contains("invert") ? 0 : 1;
           document.cookie = "invert=" + isLight + ";max-age=63072000";
           document.body.classList[isLight ? "add" : "remove"]("invert");
-
-          let outputClasses = document.getElementById("output").classList;
-          let darkmodeButton = document.getElementById("darkmodebutton")
-          if (isLight) {
-              outputClasses.add("light")
-              outputClasses.remove("dark")
-              darkmodeButton.textContent = "[dark mode]"
-          } else {
-              outputClasses.add("dark")
-              outputClasses.remove("light")
-              darkmodeButton.textContent = "[light mode]"
-          }
+          setDarkmode(!isLight);
       }
 
       function setMarkdown(enabled) {
