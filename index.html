@@ -150,7 +150,10 @@
                           return;
                       }
 
-                      document.getElementById("plaintext").value = plaintext;
+                      const urlParams = new URLSearchParams(window.location.search);
+                      if (urlParams.get("edit") !== "true") {
+                          document.getElementById("plaintext").value = plaintext;
+                      }
                       setMarkdown(true)
                   });
               };
@@ -177,6 +180,25 @@
                       result = url;
                   }
                   text_offer(result);
+              };
+              reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
+          });
+      }
+
+      function save() {
+          var plaintext = document.getElementById("plaintext").value;
+          lzma.compress(plaintext, 1, function (compressed, error) {
+              if (error) {
+                  alert("Failed to compress data: " + error);
+                  return;
+              }
+
+              var reader = new FileReader();
+              reader.onload = function () {
+                  var base64 = reader.result.substr(reader.result.indexOf(",") + 1);
+                  var url = "https://" + location.host + location.pathname + "#" + base64 + "?edit=true";
+
+                window.open(url,"_self")
               };
               reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
           });
@@ -239,6 +261,8 @@
           }
       }
 
+
+
       var markdownShown = true
       function toggleMarkdown() {
           markdownShown = !markdownShown
@@ -256,6 +280,7 @@
     <a class="nav-left" href="https://github.com/Nsl106/paste-md">[github]</a>
     <a class="nav-left" id = "darkmodebutton" onclick="invert()">[light mode]</a>
     <a class="nav-left" id = "markdownbutton" onclick="toggleMarkdown()">[edit]</a>
+    <a onclick="save()">[save]</a>
     <a onclick="url_generate('raw')">[generate url]</a>
     <a onclick="url_generate('markdown')">[generate markdown link]</a>
   </span><span class="nav-text-offer">
