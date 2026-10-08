@@ -115,23 +115,30 @@
   </style>
   <script src="lzma.js"></script>
   <script src="marked.min.js"></script>
+  <script src="purify.min.js"></script>
   <script>
       var matches;
       var lzma = new LZMA("lzma_worker.js");
 
-      document.addEventListener('DOMContentLoaded', function () {
-          document.getElementById("plaintext").focus();
+      // open links from rendered markdown in a new tab so the paste isn't navigated away from
+      DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+          if (node.tagName === 'A' && node.hasAttribute('href')) {
+              node.setAttribute('target', '_blank');
+              node.setAttribute('rel', 'noopener noreferrer');
+          }
+      });
 
-          if (matches = /(?:^|\;)invert\=([01])(?:\;|$)/.exec(document.cookie)) {
+      document.addEventListener('DOMContentLoaded', function () {
+          if (matches = /(?:^|;\s*)invert=([01])(?:;|$)/.exec(document.cookie)) {
               if (matches[1] === '1') {
                   document.body.classList.add("invert");
-                  setDarkmode(false)
+                  setDarkmode(false);
               }
           }
 
           var base64 = location.hash.substr(1);
           if (base64.length == 0) {
-              setMarkdown(false)
+              setMarkdown(false);
               return;
           }
 
@@ -147,21 +154,22 @@
                   lzma.decompress(compressed_data, function (plaintext, error) {
                       if (error) {
                           alert("Failed to decompress data: " + error);
+                          setMarkdown(false);
                           return;
                       }
 
-                      const urlParams = new URLSearchParams(window.location.search);
-                      if (urlParams.get("edit") !== "true") {
-                          document.getElementById("plaintext").value = plaintext;
-                      }
-                      setMarkdown(true)
+                      document.getElementById("plaintext").value = plaintext;
+                      setMarkdown(true);
                   });
               };
               reader.readAsArrayBuffer(blob);
+          }).catch(function (error) {
+              alert("Failed to decode data: " + error);
+              setMarkdown(false);
           });
       });
 
-      function url_generate(format) {
+      function compress_to_base64(callback) {
           var plaintext = document.getElementById("plaintext").value;
           lzma.compress(plaintext, 1, function (compressed, error) {
               if (error) {
@@ -171,36 +179,29 @@
 
               var reader = new FileReader();
               reader.onload = function () {
-                  var base64 = reader.result.substr(reader.result.indexOf(",") + 1);
-                  var url = "https://" + location.host + location.pathname + "#" + base64;
-                  var result;
-                  if (format === 'markdown') {
-                      result = "[paste](" + url + ")";
-                  } else {
-                      result = url;
-                  }
-                  text_offer(result);
+                  callback(reader.result.substr(reader.result.indexOf(",") + 1));
               };
               reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
           });
       }
 
-      function save() {
-          var plaintext = document.getElementById("plaintext").value;
-          lzma.compress(plaintext, 1, function (compressed, error) {
-              if (error) {
-                  alert("Failed to compress data: " + error);
-                  return;
+      function url_generate(format) {
+          compress_to_base64(function (base64) {
+              var url = location.protocol + "//" + location.host + location.pathname + "#" + base64;
+              var result;
+              if (format === 'markdown') {
+                  result = "[paste](" + url + ")";
+              } else {
+                  result = url;
               }
+              text_offer(result);
+          });
+      }
 
-              var reader = new FileReader();
-              reader.onload = function () {
-                  var base64 = reader.result.substr(reader.result.indexOf(",") + 1);
-                  var url = "https://" + location.host + location.pathname + "#" + base64 + "?edit=true";
-
-                window.open(url,"_self")
-              };
-              reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
+      // store the paste in the address bar so a refresh or bookmark keeps it
+      function save() {
+          compress_to_base64(function (base64) {
+              history.replaceState(null, "", "#" + base64);
           });
       }
 
@@ -223,15 +224,15 @@
 
       function setDarkmode(isDark) {
           let outputClasses = document.getElementById("output").classList;
-          let darkmodeButton = document.getElementById("darkmodebutton")
+          let darkmodeButton = document.getElementById("darkmodebutton");
           if (isDark) {
-              outputClasses.add("dark")
-              outputClasses.remove("light")
-              darkmodeButton.textContent = "[light mode]"
+              outputClasses.add("dark");
+              outputClasses.remove("light");
+              darkmodeButton.textContent = "[light mode]";
           } else {
-              outputClasses.add("light")
-              outputClasses.remove("dark")
-              darkmodeButton.textContent = "[dark mode]"
+              outputClasses.add("light");
+              outputClasses.remove("dark");
+              darkmodeButton.textContent = "[dark mode]";
           }
       }
 
@@ -243,41 +244,40 @@
       }
 
       function setMarkdown(enabled) {
-          markdownShown = enabled
+          markdownShown = enabled;
           let inputElement = document.getElementById("plaintext");
           let outputElement = document.getElementById("output");
-          let markdownButton = document.getElementById("markdownbutton")
+          let markdownButton = document.getElementById("markdownbutton");
 
           if (enabled) {
-              outputElement.innerHTML = marked.parse(inputElement.value);
+              outputElement.innerHTML = DOMPurify.sanitize(marked.parse(inputElement.value));
 
               inputElement.style.display = "none";
               outputElement.style.display = "block";
-              markdownButton.textContent = "[edit]"
+              markdownButton.textContent = "[edit]";
           } else {
               inputElement.style.display = "block";
               outputElement.style.display = "none";
-              markdownButton.textContent = "[view]"
+              markdownButton.textContent = "[view]";
+              inputElement.focus();
           }
       }
 
-
-
-      var markdownShown = true
+      var markdownShown = true;
       function toggleMarkdown() {
-          markdownShown = !markdownShown
+          markdownShown = !markdownShown;
           setMarkdown(markdownShown);
       }
   </script>
 </head>
 <body>
 <div id="plaintext-wrapper">
-  <textarea id="plaintext" wrap="off" spellcheck="true"></textarea>
+  <textarea id="plaintext" spellcheck="true"></textarea>
   <div id="output" class="markdown-body dark"></div>
 </div>
 <div id="nav">
   <span class="nav-default">
-    <a class="nav-left" href="https://github.com/Nsl106/paste-md">[github]</a>
+    <a class="nav-left" href="https://github.com/Nsl106/paste-md" target="_blank" rel="noopener noreferrer">[github]</a>
     <a class="nav-left" id = "darkmodebutton" onclick="invert()">[light mode]</a>
     <a class="nav-left" id = "markdownbutton" onclick="toggleMarkdown()">[edit]</a>
     <a onclick="save()">[save]</a>

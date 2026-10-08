@@ -1,3 +1,5 @@
+Try it here: https://nsl106.github.io/paste-md/
+
 Fork of https://github.com/topaz/paste to allow for markdown rendering in the ui.
 
 
@@ -5,4 +7,4 @@ This is a no-datastore, client-side paste service. It turns text into [LZMA](htt
 
 Because the entire paste is inside the URL, there's no risk of losing your data because a 3rd-party service vanished or deleted old pastes. If you have the URL, you have the pasted data.
 
-Uses [LZMA-JS](https://github.com/LZMA-JS/LZMA-JS), [Marked](https://github.com/markedjs/marked), and [Github-Markdown-CSS](https://github.com/sindresorhus/github-markdown-css/tree/main).
+Uses [LZMA-JS](https://github.com/LZMA-JS/LZMA-JS), [Marked](https://github.com/markedjs/marked), [DOMPurify](https://github.com/cure53/DOMPurify), and [Github-Markdown-CSS](https://github.com/sindresorhus/github-markdown-css/tree/main).
