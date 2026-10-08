@@ -28,7 +28,7 @@
           font-size: 1.1em;
 
           resize: none;
-          display: none;
+          display: block;
           width: 100%;
           height: 100%;
       }
@@ -41,6 +41,32 @@
           bottom: 2em;
           overflow: auto;
           overscroll-behavior: none;
+      }
+
+      #plaintext-wrapper.mode-view #plaintext,
+      #plaintext-wrapper.mode-edit #output {
+          display: none;
+      }
+
+      #plaintext-wrapper.mode-split {
+          display: flex;
+          overflow: hidden;
+      }
+
+      #plaintext-wrapper.mode-split #plaintext,
+      #plaintext-wrapper.mode-split #output {
+          flex: none;
+          width: 50%;
+          height: 100%;
+          overflow: auto;
+      }
+
+      #plaintext-wrapper.mode-split #output {
+          border-left: 1px solid #333333;
+      }
+
+      body.invert #plaintext-wrapper.mode-split #output {
+          border-left-color: #aaaaaa;
       }
 
       #nav * {
@@ -138,7 +164,7 @@
 
           var base64 = location.hash.substr(1);
           if (base64.length == 0) {
-              setMarkdown(false);
+              setMode("edit");
               return;
           }
 
@@ -154,18 +180,18 @@
                   lzma.decompress(compressed_data, function (plaintext, error) {
                       if (error) {
                           alert("Failed to decompress data: " + error);
-                          setMarkdown(false);
+                          setMode("edit");
                           return;
                       }
 
                       document.getElementById("plaintext").value = plaintext;
-                      setMarkdown(true);
+                      setMode("view");
                   });
               };
               reader.readAsArrayBuffer(blob);
           }).catch(function (error) {
               alert("Failed to decode data: " + error);
-              setMarkdown(false);
+              setMode("edit");
           });
       });
 
@@ -243,43 +269,72 @@
           setDarkmode(!isLight);
       }
 
-      function setMarkdown(enabled) {
-          markdownShown = enabled;
+      // "view" (rendered), "edit" (textarea), or "split" (both side by side, desktop only)
+      var mode = "view";
+      var splitAvailable = window.matchMedia("(min-width: 800px)");
+
+      splitAvailable.addEventListener("change", function () {
+          if (!splitAvailable.matches && mode === "split") {
+              setMode("edit");
+          } else {
+              updateModeButton();
+          }
+      });
+
+      function renderPreview() {
           let inputElement = document.getElementById("plaintext");
           let outputElement = document.getElementById("output");
-          let markdownButton = document.getElementById("markdownbutton");
-
-          if (enabled) {
-              outputElement.innerHTML = DOMPurify.sanitize(marked.parse(inputElement.value));
-
-              inputElement.style.display = "none";
-              outputElement.style.display = "block";
-              markdownButton.textContent = "[edit]";
-          } else {
-              inputElement.style.display = "block";
-              outputElement.style.display = "none";
-              markdownButton.textContent = "[view]";
-              inputElement.focus();
-          }
+          outputElement.innerHTML = DOMPurify.sanitize(marked.parse(inputElement.value));
       }
 
-      var markdownShown = true;
-      function toggleMarkdown() {
-          markdownShown = !markdownShown;
-          setMarkdown(markdownShown);
+      var renderQueued = false;
+      function queueRenderPreview() {
+          if (renderQueued) return;
+          renderQueued = true;
+          requestAnimationFrame(function () {
+              renderQueued = false;
+              renderPreview();
+          });
+      }
+
+      function nextMode() {
+          if (mode === "view") return "edit";
+          if (mode === "edit" && splitAvailable.matches) return "split";
+          return "view";
+      }
+
+      function updateModeButton() {
+          document.getElementById("modebutton").textContent = "[" + nextMode() + "]";
+      }
+
+      function setMode(newMode) {
+          mode = newMode;
+          document.getElementById("plaintext-wrapper").className = "mode-" + mode;
+
+          if (mode !== "edit") {
+              renderPreview();
+          }
+          if (mode !== "view") {
+              document.getElementById("plaintext").focus();
+          }
+          updateModeButton();
+      }
+
+      function cycleMode() {
+          setMode(nextMode());
       }
   </script>
 </head>
 <body>
-<div id="plaintext-wrapper">
-  <textarea id="plaintext" spellcheck="true"></textarea>
+<div id="plaintext-wrapper" class="mode-view">
+  <textarea id="plaintext" spellcheck="true" oninput="if (mode === 'split') queueRenderPreview()"></textarea>
   <div id="output" class="markdown-body dark"></div>
 </div>
 <div id="nav">
   <span class="nav-default">
     <a class="nav-left" href="https://github.com/Nsl106/paste-md" target="_blank" rel="noopener noreferrer">[github]</a>
     <a class="nav-left" id = "darkmodebutton" onclick="invert()">[light mode]</a>
-    <a class="nav-left" id = "markdownbutton" onclick="toggleMarkdown()">[edit]</a>
+    <a class="nav-left" id = "modebutton" onclick="cycleMode()">[edit]</a>
     <a onclick="save()">[save]</a>
     <a onclick="url_generate('raw')">[generate url]</a>
     <a onclick="url_generate('markdown')">[generate markdown link]</a>
