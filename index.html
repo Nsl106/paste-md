@@ -155,12 +155,13 @@
       });
 
       document.addEventListener('DOMContentLoaded', function () {
-          if (matches = /(?:^|;\s*)invert=([01])(?:;|$)/.exec(document.cookie)) {
-              if (matches[1] === '1') {
-                  document.body.classList.add("invert");
-                  setDarkmode(false);
-              }
+          if (matches = /(?:^|;\s*)theme=(dark|light|system)(?:;|$)/.exec(document.cookie)) {
+              theme = matches[1];
+          } else if (matches = /(?:^|;\s*)invert=([01])(?:;|$)/.exec(document.cookie)) {
+              // carry over the preference saved before the theme cookie existed
+              theme = matches[1] === '1' ? "light" : "dark";
           }
+          applyTheme();
 
           var base64 = location.hash.substr(1);
           if (base64.length == 0) {
@@ -248,25 +249,37 @@
           document.getElementById("nav").classList.remove("text-offer");
       }
 
-      function setDarkmode(isDark) {
-          let outputClasses = document.getElementById("output").classList;
-          let darkmodeButton = document.getElementById("darkmodebutton");
-          if (isDark) {
-              outputClasses.add("dark");
-              outputClasses.remove("light");
-              darkmodeButton.textContent = "[light mode]";
-          } else {
-              outputClasses.add("light");
-              outputClasses.remove("dark");
-              darkmodeButton.textContent = "[dark mode]";
+      // "dark", "light", or "system" (follow the OS color scheme)
+      var theme = "dark";
+      var prefersLight = window.matchMedia("(prefers-color-scheme: light)");
+
+      prefersLight.addEventListener("change", function () {
+          if (theme === "system") {
+              applyTheme();
           }
+      });
+
+      function nextTheme() {
+          if (theme === "dark") return "light";
+          if (theme === "light") return "system";
+          return "dark";
       }
 
-      function invert() {
-          var isLight = document.body.classList.contains("invert") ? 0 : 1;
-          document.cookie = "invert=" + isLight + ";max-age=63072000";
-          document.body.classList[isLight ? "add" : "remove"]("invert");
-          setDarkmode(!isLight);
+      function applyTheme() {
+          var isLight = theme === "light" || (theme === "system" && prefersLight.matches);
+          let outputClasses = document.getElementById("output").classList;
+          document.body.classList.toggle("invert", isLight);
+          outputClasses.toggle("light", isLight);
+          outputClasses.toggle("dark", !isLight);
+
+          var next = nextTheme();
+          document.getElementById("darkmodebutton").textContent = "[" + (next === "system" ? next : next + " mode") + "]";
+      }
+
+      function cycleTheme() {
+          theme = nextTheme();
+          document.cookie = "theme=" + theme + ";max-age=63072000";
+          applyTheme();
       }
 
       // "view" (rendered), "edit" (textarea), or "split" (both side by side, desktop only)
@@ -333,7 +346,7 @@
 <div id="nav">
   <span class="nav-default">
     <a class="nav-left" href="https://github.com/Nsl106/paste-md" target="_blank" rel="noopener noreferrer">[github]</a>
-    <a class="nav-left" id = "darkmodebutton" onclick="invert()">[light mode]</a>
+    <a class="nav-left" id = "darkmodebutton" onclick="cycleTheme()">[light mode]</a>
     <a class="nav-left" id = "modebutton" onclick="cycleMode()">[edit]</a>
     <a onclick="save()">[save]</a>
     <a onclick="url_generate('raw')">[generate url]</a>
