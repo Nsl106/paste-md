@@ -271,9 +271,7 @@
           document.body.classList.toggle("invert", isLight);
           outputClasses.toggle("light", isLight);
           outputClasses.toggle("dark", !isLight);
-
-          var next = nextTheme();
-          document.getElementById("darkmodebutton").textContent = "[" + (next === "system" ? next : next + " mode") + "]";
+          document.getElementById("darkmodebutton").textContent = "[theme: " + theme + "]";
       }
 
       function cycleTheme() {
@@ -289,8 +287,6 @@
       splitAvailable.addEventListener("change", function () {
           if (!splitAvailable.matches && mode === "split") {
               setMode("edit");
-          } else {
-              updateModeButton();
           }
       });
 
@@ -316,10 +312,6 @@
           return "view";
       }
 
-      function updateModeButton() {
-          document.getElementById("modebutton").textContent = "[" + nextMode() + "]";
-      }
-
       function setMode(newMode) {
           mode = newMode;
           document.getElementById("plaintext-wrapper").className = "mode-" + mode;
@@ -330,7 +322,7 @@
           if (mode !== "view") {
               document.getElementById("plaintext").focus();
           }
-          updateModeButton();
+          document.getElementById("modebutton").textContent = "[mode: " + mode + "]";
       }
 
       function cycleMode() {
@@ -346,8 +338,8 @@
 <div id="nav">
   <span class="nav-default">
     <a class="nav-left" href="https://github.com/Nsl106/paste-md" target="_blank" rel="noopener noreferrer">[github]</a>
-    <a class="nav-left" id = "darkmodebutton" onclick="cycleTheme()">[light mode]</a>
-    <a class="nav-left" id = "modebutton" onclick="cycleMode()">[edit]</a>
+    <a class="nav-left" id = "darkmodebutton" onclick="cycleTheme()">[theme: dark]</a>
+    <a class="nav-left" id = "modebutton" onclick="cycleMode()">[mode: view]</a>
     <a onclick="save()">[save]</a>
     <a onclick="url_generate('raw')">[generate url]</a>
     <a onclick="url_generate('markdown')">[generate markdown link]</a>
